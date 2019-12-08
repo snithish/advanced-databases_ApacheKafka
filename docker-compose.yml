@@ -4,7 +4,6 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:5.3.1
     hostname: zookeeper
-    container_name: zookeeper
     ports:
       - "2181:2181"
     environment:
@@ -14,7 +13,6 @@ services:
   broker:
     image: confluentinc/cp-enterprise-kafka:5.3.1
     hostname: broker
-    container_name: broker
     depends_on:
       - zookeeper
     ports:
@@ -36,7 +34,6 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:5.3.1
     hostname: schema-registry
-    container_name: schema-registry
     depends_on:
       - zookeeper
       - broker
@@ -49,7 +46,6 @@ services:
   connect:
     image: kafka-connect
     hostname: connect
-    container_name: connect
     depends_on:
       - zookeeper
       - broker
@@ -84,7 +80,6 @@ services:
   control-center:
     image: confluentinc/cp-enterprise-control-center:5.3.1
     hostname: control-center
-    container_name: control-center
     depends_on:
       - zookeeper
       - broker
@@ -109,7 +104,6 @@ services:
   ksql-server:
     image: confluentinc/cp-ksql-server:5.3.1
     hostname: ksql-server
-    container_name: ksql-server
     depends_on:
       - broker
       - connect
@@ -128,50 +122,9 @@ services:
 
   ksql-cli:
     image: confluentinc/cp-ksql-cli:5.3.1
-    container_name: ksql-cli
     depends_on:
       - broker
       - connect
       - ksql-server
     entrypoint: /bin/sh
     tty: true
-
-  ksql-datagen:
-    # Downrev ksql-examples to 5.1.2 due to DEVX-798 (work around issues in 5.2.0)
-    image: confluentinc/ksql-examples:5.3.1
-    hostname: ksql-datagen
-    container_name: ksql-datagen
-    depends_on:
-      - ksql-server
-      - broker
-      - schema-registry
-      - connect
-    command: "bash -c 'echo Waiting for Kafka to be ready... && \
-                       cub kafka-ready -b broker:29092 1 40 && \
-                       echo Waiting for Confluent Schema Registry to be ready... && \
-                       cub sr-ready schema-registry 8081 40 && \
-                       echo Waiting a few seconds for topic creation to finish... && \
-                       sleep 11 && \
-                       tail -f /dev/null'"
-    environment:
-      KSQL_CONFIG_DIR: "/etc/ksql"
-      KSQL_LOG4J_OPTS: "-Dlog4j.configuration=file:/etc/ksql/log4j-rolling.properties"
-      STREAMS_BOOTSTRAP_SERVERS: broker:29092
-      STREAMS_SCHEMA_REGISTRY_HOST: schema-registry
-      STREAMS_SCHEMA_REGISTRY_PORT: 8081
-
-  rest-proxy:
-    image: confluentinc/cp-kafka-rest:5.3.1
-    depends_on:
-      - zookeeper
-      - broker
-      - schema-registry
-    ports:
-      - 8082:8082
-    hostname: rest-proxy
-    container_name: rest-proxy
-    environment:
-      KAFKA_REST_HOST_NAME: rest-proxy
-      KAFKA_REST_BOOTSTRAP_SERVERS: 'broker:29092'
-      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082"
-      KAFKA_REST_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
