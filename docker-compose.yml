@@ -122,6 +122,13 @@ services:
       KSQL_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
       KSQL_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
 
+  datagen:
+    hostname: datagen
+    build:
+      context: ./datagen
+    ports:
+        - "5000:5000"
+
   ksql-cli:
     image: confluentinc/cp-ksql-cli:5.3.1
     depends_on:
