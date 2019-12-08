@@ -44,6 +44,8 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
 
   connect:
+    build:
+      context: ./kafka-connect
     image: kafka-connect
     hostname: connect
     depends_on:
