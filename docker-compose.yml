@@ -90,3 +90,15 @@ services:
       - ksqldb-server
     entrypoint: /bin/sh
     tty: true
+
+  postgres:
+    image: postgres:12.1
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "benchmark"
+      POSTGRES_PASSWORD: "benchmark"
+    command: -c 'listen_addresses=*'
+    volumes:
+    - ./datagen:/datagen
