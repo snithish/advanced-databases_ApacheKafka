@@ -14,12 +14,24 @@ CREATE TABLE user_count
 DROP TABLE IF EXISTS event_count;
 CREATE TABLE event_count
 (
-    event_id   VARCHAR,
-    response   VARCHAR,
-    event_name VARCHAR,
+    event_id    VARCHAR,
+    response    VARCHAR,
+    event_name  VARCHAR,
     total_rsvps int,
     PRIMARY KEY (event_id, response)
 );
+
+DROP TABLE IF EXISTS event_time_count;
+CREATE TABLE event_time_count
+(
+    event_id    VARCHAR,
+    start_time  TIMESTAMP,
+    end_time    TIMESTAMP,
+    total_rsvps INT,
+    PRIMARY KEY (event_id, start_time)
+);
+CREATE INDEX idx_event_time_count_inverse
+    ON event_time_count (event_id, start_time, end_time DESC);
 
 CREATE OR REPLACE FUNCTION process_rsvp_events() RETURNS TRIGGER AS
 $materialize_agg$
@@ -34,6 +46,23 @@ begin
     VALUES (((NEW.rsvp -> 'event') ->> 'event_id'), NEW.rsvp ->> 'response', (NEW.rsvp -> 'event') ->> 'event_name',
             1)
     ON CONFLICT (event_id, response) DO UPDATE SET total_rsvps = event_count.total_rsvps + 1;
+
+    if EXISTS(SELECT 1
+              FROM event_time_count et
+              WHERE et.event_id = (NEW.rsvp -> 'event') ->> 'event_id'
+                AND et.start_time >= to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000)
+                AND to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000) < et.end_time) then
+        UPDATE event_time_count et
+        SET total_rsvps = total_rsvps + 1
+        WHERE et.event_id = (NEW.rsvp -> 'event') ->> 'event_id'
+          AND et.start_time >= to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000)
+          AND to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000) < et.end_time;
+    else
+        INSERT INTO event_time_count
+        VALUES ((NEW.rsvp -> 'event') ->> 'event_id', to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000),
+                to_timestamp(((New.rsvp) ->> 'mtime')::bigint / 1000) + interval '1 minute', 1);
+    end if;
+
     RETURN NEW;
 end;
 $materialize_agg$ LANGUAGE plpgsql;
